@@ -14,7 +14,7 @@ const layers = {
 // Create the map with our layers
 const map = L.map("map", {
     center: [36.5, -117.5],
-    zoom: 3,
+    zoom: 4,
     layers: [layers.earthquake]
 });
 
@@ -29,7 +29,6 @@ const legend = L.control({
 // Insert div with legend class
 legend.onAdd = function (map) {
     const div = L.DomUtil.create("div", "info legend"),
-        labels = ["0-250", "250-500", "500-750", "750-1000", "1000+"],
         grades = [0, 250, 500, 750, 1000]
 
     // Create legend header    
@@ -38,7 +37,7 @@ legend.onAdd = function (map) {
     for (var i = 0; i < grades.length; i++) {
         div.innerHTML +=
             '<i style="background:' + colorSig(grades[i] + 1) + '"></i> ' +
-            grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + '<br>' : '+');
+            grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + '<br><br>' : '+');
     }
     return div;
 };
@@ -59,3 +58,38 @@ function colorSig(sig) {
         return '#ffffff';
     }
 }
+
+
+// Load Json and plot data dynamically based on magnitude and significance
+
+d3.json('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/1.0_month.geojson').then(
+    eqData => {
+        const features = eqData.features;
+        features.forEach((feature, i) => {
+            let location = (feature.geometry.coordinates.slice(0, 2)).reverse();
+            let place = feature.properties.place;
+            let mag = feature.properties.mag;
+            let sig = feature.properties.sig;
+            let date = new Date(feature.properties.time);
+           
+            let radius = 0;
+                if (mag >4) {radius = mag * 10000}
+                else if (mag >3) {radius = mag * 5000}
+                else if (mag >2) {radius = mag * 1000}
+                else {radius = mag * 100}
+
+            const pinPoint = L.circle(location, {
+                weight: .7,
+                color: colorSig(sig),
+                fillOpacity: 0.8,
+                radius: radius
+            });
+
+            // Add Popup
+            pinPoint.bindPopup(`<h3>Earthquake: ${place}</h3><hr>
+            <h4>Time: ${date}</h4><hr>
+            <h4>Magnitude: ${mag}</h4><hr>
+            <h4>Significance: ${sig}</h4>`) 
+            .addTo(map)
+        })
+    })
